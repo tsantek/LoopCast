@@ -47,15 +47,18 @@
 
 ## API Endpoints
 
-| Endpoint | Description |
-|-----------|-------------|
-| `POST /api/ads` | Upload an ad (video/image) |
-| `GET /api/ads` | List all ads |
-| `POST /api/devices` | Register a new playback device |
-| `GET /api/devices/:id/qrcode` | Generate QR code for device registration |
-| `POST /api/ad_schedules` | Assign ads to devices with time windows or filler role |
-| `GET /api/player/:device_id` | Fetch playlist for a device (scheduled + fallback filler ads) |
-| `POST /api/player/report` | Track ad impressions (analytics) |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check (returns `"OK"`) |
+| `/player/register` | GET | Register a new player and generate a registration token + QR code |
+| `/player/confirm-registration/:registration_token` | POST | Confirm player registration with registration token and payload (name, address, etc.) |
+| `/api/ads` | POST | Upload an ad (video/image) |
+| `/api/ads` | GET | List all ads |
+| `/api/devices` | POST | Register a new playback device |
+| `/api/devices/:id/qrcode` | GET | Generate QR code for device registration |
+| `/api/ad_schedules` | POST | Assign ads to devices with time windows or filler role |
+| `/api/player/:device_id` | GET | Fetch playlist for a device (scheduled + fallback filler ads) |
+| `/api/player/report` | POST | Track ad impressions (analytics) |
 
 ---
 
