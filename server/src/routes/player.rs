@@ -1,6 +1,6 @@
 use axum::{Json, extract::Path, extract::State};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
@@ -9,21 +9,31 @@ use crate::app_state::AppState;
 pub struct RegisterPlayerResponse {
     pub id: Uuid,
     pub registration_token: String,
-    pub qr_code_base64: String,
+    pub status: Option<String>,
 }
 
 // Add debug_handler attribute
 #[axum::debug_handler]
 pub async fn register_player(
     State(state): State<Arc<AppState>>,
+    Path(registration_token): Path<String>,
 ) -> axum::response::Result<Json<RegisterPlayerResponse>> {
+    println!("register_player called");
     let player_id = Uuid::new_v4();
+    let mut registration_token = registration_token;
+
+    // chec if registration_token is passed
+    if registration_token.is_empty() {
+        println!("No registration token provided");
+
+        registration_token = Uuid::new_v4()
+            .to_string()
+            .chars()
+            .take(6)
+            .collect::<String>();
+    }
+
     // Generate a registration token that will be 6 characters long
-    let registration_token = Uuid::new_v4()
-        .to_string()
-        .chars()
-        .take(6)
-        .collect::<String>();
 
     sqlx::query!(
         "INSERT INTO players (device_id, registration_token) VALUES ($1, $2)",
@@ -34,21 +44,14 @@ pub async fn register_player(
     .await
     .expect("Failed to insert player");
 
-    // Generate QR code data
-    // TODO: - Change this url to use proper domain
-    let qr_code_data = format!(
-        "http://localhost:3000/player/register/{}",
-        registration_token
-    );
-    let qr_code_base64 = base64::encode(qr_code_data);
     Ok(Json(RegisterPlayerResponse {
         id: player_id,
         registration_token,
-        qr_code_base64,
+        status: Some("pending".to_string()),
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct RegistrationPayload {
     name: String,
     address: String,
@@ -58,13 +61,12 @@ pub struct RegistrationPayload {
     state: String,
 }
 
-#[derive(Debug, Clone, sqlx::Type)]
-#[sqlx(type_name = "text")]
-#[sqlx(rename_all = "lowercase")]
-enum StatusType {
-    Active,
-    Inactive,
-    Pending,
+#[derive(Serialize)]
+pub struct Player {
+    id: Uuid,
+    registration_token: String,
+    name: Option<String>,
+    status: Option<String>,
 }
 
 #[axum::debug_handler]
@@ -73,7 +75,10 @@ pub async fn confirm_registration(
     Path(registration_token): Path<String>,
     Json(payload): Json<RegistrationPayload>,
     // check if the registration token exists
-) -> axum::response::Result<Json<&'static str>> {
+) -> axum::response::Result<Json<Player>, axum::http::StatusCode> {
+    println!("Payload received: {:?}", payload);
+
+    println!("confirm_registration called");
     let player = sqlx::query!(
         "SELECT device_id, status::text AS status FROM players WHERE registration_token = $1",
         registration_token
@@ -82,17 +87,19 @@ pub async fn confirm_registration(
     .await
     .expect("Failed to fetch player");
 
-    match player {
+    let player_record = match player {
         // if record exists, check if status is pending
         Some(p) => {
             if p.status.as_deref() == Some("pending") {
                 p
             } else {
-                return Ok(Json("Registration already confirmed"));
+                // Return 409 Conflict if already confirmed with registered token
+                return Err(axum::http::StatusCode::CONFLICT.into());
             }
         }
         None => {
-            return Ok(Json("Invalid registration token"));
+            // Return 400 Bad Request if token is invalid
+            return Err(axum::http::StatusCode::BAD_REQUEST.into());
         }
     };
 
@@ -111,5 +118,49 @@ pub async fn confirm_registration(
     .await
     .expect("Failed to update player");
 
-    Ok(Json("Registration confirmed".into()))
+    Ok(Json(Player {
+        id: player_record.device_id,
+        registration_token,
+        name: Some(payload.name),
+        status: Some("active".to_string()),
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LoginPayload {
+    name: String,
+    registration_token: String,
+}
+
+#[axum::debug_handler]
+pub async fn login_player(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<LoginPayload>,
+) -> axum::response::Result<Json<Player>, axum::http::StatusCode> {
+    let name = payload.name;
+    let registration_token = payload.registration_token;
+
+    let player = sqlx::query!(
+        "SELECT device_id, status::text AS status FROM players WHERE registration_token = $1 AND name = $2",
+        registration_token,
+        name
+    )
+    .fetch_optional(&state.db)
+    .await
+    .expect("Failed to fetch player");
+
+    let player_record = match player {
+        Some(p) => p,
+        None => {
+            // Return 400 Bad Request if token or name is invalid
+            return Err(axum::http::StatusCode::BAD_REQUEST.into());
+        }
+    };
+
+    Ok(Json(Player {
+        id: player_record.device_id,
+        registration_token: registration_token,
+        name: Some(name),
+        status: Some(player_record.status.unwrap_or_default()),
+    }))
 }
