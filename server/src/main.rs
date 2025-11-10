@@ -12,6 +12,7 @@ mod db;
 mod routes;
 
 use crate::routes::player::{confirm_registration, login_player, register_player};
+use crate::routes::video_stream::video_stream;
 use http::Method;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -38,6 +39,7 @@ async fn main() {
             post(confirm_registration),
         )
         .route("/api/player/login", post(login_player))
+        .route("/api/video_stream/:video_name", get(video_stream))
         .with_state(state)
         .layer(cors);
 

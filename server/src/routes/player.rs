@@ -1,6 +1,6 @@
 use axum::{Json, extract::Path, extract::State};
 use serde::{Deserialize, Serialize};
-use std::{fmt, sync::Arc};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::app_state::AppState;

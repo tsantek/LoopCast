@@ -14,3 +14,4 @@ chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
 base64 = "0.22.1"
 tower-http = { version = "0.6.6", features = ["cors"] }
+tokio-util = { version = "0.7.17", features = ["io"] }
