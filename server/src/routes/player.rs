@@ -67,6 +67,8 @@ pub struct Player {
     registration_token: String,
     name: Option<String>,
     status: Option<String>,
+    notes: Option<String>,
+    address: Option<String>,
 }
 
 #[axum::debug_handler]
@@ -123,6 +125,8 @@ pub async fn confirm_registration(
         registration_token,
         name: Some(payload.name),
         status: Some("active".to_string()),
+        notes: None,
+        address: None,
     }))
 }
 
@@ -162,5 +166,60 @@ pub async fn login_player(
         registration_token: registration_token,
         name: Some(name),
         status: Some(player_record.status.unwrap_or_default()),
+        notes: None,
+        address: None,
     }))
+}
+
+#[axum::debug_handler]
+pub async fn get_player(
+    State(state): State<Arc<AppState>>,
+    Path(device_id): Path<Uuid>,
+) -> axum::response::Result<Json<Player>, axum::http::StatusCode> {
+    let player = sqlx::query!(
+        "SELECT device_id, registration_token, name, notes, address, status::text AS status FROM players WHERE device_id = $1",
+        device_id
+    )
+    .fetch_optional(&state.db)
+    .await
+    .expect("Failed to fetch player");
+
+    match player {
+        Some(p) => Ok(Json(Player {
+            id: p.device_id,
+            registration_token: p.registration_token,
+            name: p.name,
+            status: p.status,
+            notes: p.notes,
+            address: p.address,
+        })),
+        None => Err(axum::http::StatusCode::NOT_FOUND.into()),
+    }
+}
+
+// Get List of all players
+#[axum::debug_handler]
+pub async fn get_players(
+    State(state): State<Arc<AppState>>,
+) -> axum::response::Result<Json<Vec<Player>>, axum::http::StatusCode> {
+    let players = sqlx::query!(
+        "SELECT device_id, registration_token, name, notes, address, status::text AS status FROM players"
+    )
+    .fetch_all(&state.db)
+    .await
+    .expect("Failed to fetch players");
+
+    Ok(Json(
+        players
+            .into_iter()
+            .map(|p| Player {
+                id: p.device_id,
+                registration_token: p.registration_token,
+                name: p.name,
+                status: p.status,
+                notes: p.notes,
+                address: p.address,
+            })
+            .collect(),
+    ))
 }
