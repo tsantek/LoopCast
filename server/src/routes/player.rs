@@ -64,11 +64,15 @@ pub struct RegistrationPayload {
 #[derive(Serialize)]
 pub struct Player {
     id: Uuid,
-    registration_token: String,
+    registration_token: Option<String>,
     name: Option<String>,
     status: Option<String>,
     notes: Option<String>,
     address: Option<String>,
+    city: Option<String>,
+    zip_code: Option<String>,
+    country: Option<String>,
+    state: Option<String>,
 }
 
 #[axum::debug_handler]
@@ -122,11 +126,15 @@ pub async fn confirm_registration(
 
     Ok(Json(Player {
         id: player_record.device_id,
-        registration_token,
+        registration_token: Some(registration_token),
         name: Some(payload.name),
         status: Some("active".to_string()),
         notes: None,
         address: None,
+        city: None,
+        zip_code: None,
+        country: None,
+        state: None,
     }))
 }
 
@@ -163,11 +171,15 @@ pub async fn login_player(
 
     Ok(Json(Player {
         id: player_record.device_id,
-        registration_token: registration_token,
+        registration_token: Some(registration_token),
         name: Some(name),
         status: Some(player_record.status.unwrap_or_default()),
         notes: None,
         address: None,
+        city: None,
+        zip_code: None,
+        country: None,
+        state: None,
     }))
 }
 
@@ -177,7 +189,7 @@ pub async fn get_player(
     Path(device_id): Path<Uuid>,
 ) -> axum::response::Result<Json<Player>, axum::http::StatusCode> {
     let player = sqlx::query!(
-        "SELECT device_id, registration_token, name, notes, address, status::text AS status FROM players WHERE device_id = $1",
+        "SELECT device_id, name, notes, address, city, zip_code, country, state, status::text AS status FROM players WHERE device_id = $1",
         device_id
     )
     .fetch_optional(&state.db)
@@ -187,11 +199,15 @@ pub async fn get_player(
     match player {
         Some(p) => Ok(Json(Player {
             id: p.device_id,
-            registration_token: p.registration_token,
+            registration_token: None,
             name: p.name,
             status: p.status,
             notes: p.notes,
             address: p.address,
+            city: p.city,
+            zip_code: p.zip_code,
+            country: p.country,
+            state: p.state,
         })),
         None => Err(axum::http::StatusCode::NOT_FOUND.into()),
     }
@@ -214,11 +230,15 @@ pub async fn get_players(
             .into_iter()
             .map(|p| Player {
                 id: p.device_id,
-                registration_token: p.registration_token,
+                registration_token: Some(p.registration_token),
                 name: p.name,
                 status: p.status,
-                notes: p.notes,
-                address: p.address,
+                notes: None,
+                address: None,
+                city: None,
+                zip_code: None,
+                country: None,
+                state: None,
             })
             .collect(),
     ))

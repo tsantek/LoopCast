@@ -1,107 +1,52 @@
-// import { useState, useEffect, useRef } from "react";
-// import { fetchSchedule } from "../api";
-
-// export default function FullscreenPlayer() {
-//   const [schedule, setSchedule] = useState([]);
-//   const [index, setIndex] = useState(0);
-//   const containerRef = useRef(null);
-
-//   const current = schedule[index];
-
-//   // Fetch schedule from backend
-//   useEffect(() => {
-//     fetchSchedule().then(setSchedule).catch(console.error);
-//   }, []);
-
-//   // Auto-next for images
-//   useEffect(() => {
-//     if (!current || current.type !== "image") return;
-//     const timer = setTimeout(() => next(), (current.duration || 10) * 1000);
-//     return () => clearTimeout(timer);
-//   }, [index, current]);
-
-//   const next = () => {
-//     setIndex((prev) => (prev + 1) % schedule.length);
-//   };
-//   console.log("Schedule:", schedule);
-//   console.log("Current schedule item:", current);
-
-//   // Video ended handler
-//   const handleEnded = () => next();
-
-//   // Fullscreen on click/tap (required on mobile)
-//   const enterFullscreen = () => {
-//     if (containerRef.current && !document.fullscreenElement) {
-//       containerRef.current.requestFullscreen?.();
-//     }
-//   };
-
-//   if (!current) return <div style={{ color: "white" }}>Loading schedule...</div>;
-
-//   return (
-//     <div
-//       ref={containerRef}
-//       onClick={enterFullscreen}
-//       style={{
-//         width: "100vw",
-//         height: "100vh",
-//         background: "black",
-//         display: "flex",
-//         justifyContent: "center",
-//         alignItems: "center",
-//         overflow: "hidden",
-//       }}
-//     >
-//       {current.type === "video" ? (
-//         <video
-//           src={current.url}
-//           autoPlay
-//           muted
-//           onEnded={handleEnded}
-//           style={{
-//             width: "100%",
-//             height: "100%",
-//             objectFit: "cover",
-//           }}
-//         />
-//       ) : (
-//         <img
-//           src={current.url}
-//           alt={current.title}
-//           style={{
-//             width: "100%",
-//             height: "100%",
-//             objectFit: "cover",
-//           }}
-//         />
-//       )}
-//     </div>
-//   );
-// }
-
-
-
 import { useState, useEffect, useRef } from "react";
-import { fetchSchedule } from "../api";
+import { fetchSchedule } from "../../api";
 
-export default function FullscreenPlayer() {
+export default function FullscreenPlayer({ playerId }) {
   const [schedule, setSchedule] = useState([]);
   const [index, setIndex] = useState(0);
-  const [activeVideo, setActiveVideo] = useState(0); // 0 or 1
+  const [activeVideo, setActiveVideo] = useState(0); // which video element is active
   const [showBlack, setShowBlack] = useState(false);
   const containerRef = useRef(null);
   const videoRefs = [useRef(null), useRef(null)];
 
   const current = schedule[index];
 
-  // Fetch schedule from backend
+  // 1️⃣ Load schedule (fake or from API)
   useEffect(() => {
-    fetchSchedule().then(setSchedule).catch(console.error);
-  }, []);
+    async function loadSchedule() {
+      try {
+        const data = await fetchSchedule(playerId);
+        console.log("Fetched schedule from API:", data);
+        const mappedData = data.map((item) => ({
+          ...item,
+          url: `http://localhost:3001/api/video_stream/${item.video_name}`,
+        }));
+        setSchedule(mappedData);
+      } catch (err) {
+        console.warn("Failed to fetch schedule.", err);
+      }
+    }
+    loadSchedule();
+  }, [playerId]);
 
-  // Auto-next for images
+  // 2️⃣ Once schedule and refs exist, load first video
   useEffect(() => {
-    if (!current || current.type !== "image") return;
+    if (!schedule.length) return;
+    const first = schedule[0];
+    if (first.media_type === "video" && videoRefs[0].current) {
+      const video = videoRefs[0].current;
+      video.src = first.url;
+      video.currentTime = 0;
+      video
+        .play()
+        .then(() => console.log("▶️ Playing first video:", first.url))
+        .catch((err) => console.warn("Play failed:", err));
+    }
+  }, [schedule]); // run when schedule updates
+
+  // 3️⃣ Auto-advance for images (optional)
+  useEffect(() => {
+    if (!current || current.media_type !== "image") return;
     const timer = setTimeout(() => nextItem(), (current.duration || 10) * 1000);
     return () => clearTimeout(timer);
   }, [index, current]);
@@ -111,12 +56,9 @@ export default function FullscreenPlayer() {
     const newIndex = (index + 1) % schedule.length;
     const next = schedule[newIndex];
 
-    // Step 1: Fade to black
     setShowBlack(true);
-
     setTimeout(() => {
-      // Step 2: Prepare next content
-      if (next.type === "video") {
+      if (next.media_type === "video") {
         const inactive = 1 - activeVideo;
         const nextVideo = videoRefs[inactive].current;
         const currentVideo = videoRefs[activeVideo].current;
@@ -125,30 +67,26 @@ export default function FullscreenPlayer() {
         nextVideo.src = next.url;
         nextVideo.currentTime = 0;
         nextVideo.style.opacity = 0;
-        nextVideo.style.transition = "opacity 0.5s";
 
         const onLoaded = () => {
           nextVideo.play().catch(() => {});
           requestAnimationFrame(() => {
-            // Step 3: Fade in next video
             nextVideo.style.opacity = 1;
             currentVideo.style.opacity = 0;
-
             setTimeout(() => {
               setActiveVideo(inactive);
               setIndex(newIndex);
-              setShowBlack(false); // Step 4: remove black overlay
-            }, 500); // match fade duration
+              setShowBlack(false);
+            }, 500);
           });
           nextVideo.removeEventListener("loadeddata", onLoaded);
         };
         nextVideo.addEventListener("loadeddata", onLoaded);
       } else {
-        // Image: just swap index after black screen
         setIndex(newIndex);
-        setTimeout(() => setShowBlack(false), 500); // black after image
+        setTimeout(() => setShowBlack(false), 500);
       }
-    }, 500); // 0.5s black before next content
+    }, 500);
   };
 
   const handleVideoEnded = () => nextItem();
@@ -178,10 +116,7 @@ export default function FullscreenPlayer() {
         <div
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
+            inset: 0,
             backgroundColor: "black",
             zIndex: 10,
           }}
@@ -193,6 +128,7 @@ export default function FullscreenPlayer() {
         ref={videoRefs[0]}
         autoPlay
         muted
+        crossOrigin="anonymous"
         onEnded={handleVideoEnded}
         style={{
           width: "100%",
@@ -205,11 +141,13 @@ export default function FullscreenPlayer() {
           transition: "opacity 0.5s",
         }}
       />
+
       {/* Video 2 */}
       <video
         ref={videoRefs[1]}
         autoPlay
         muted
+        crossOrigin="anonymous"
         onEnded={handleVideoEnded}
         style={{
           width: "100%",
@@ -223,11 +161,11 @@ export default function FullscreenPlayer() {
         }}
       />
 
-      {/* Image */}
-      {current.type === "image" && !showBlack && (
+      {/* Image display */}
+      {current.media_type === "image" && !showBlack && (
         <img
           src={current.url}
-          alt={current.title}
+          alt={current.video_name}
           style={{
             width: "100%",
             height: "100%",
@@ -238,6 +176,19 @@ export default function FullscreenPlayer() {
           }}
         />
       )}
+
+      {/* Debug info (you can remove this) */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 10,
+          left: 10,
+          color: "white",
+          fontSize: 12,
+        }}
+      >
+        {current.video_name || "(no name)"} | {current.media_type}
+      </div>
     </div>
   );
 }

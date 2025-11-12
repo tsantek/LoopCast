@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import PlayerRegistration from "./PlayerRegistration";
 import PlayerLogin from "./PlayerLogin";
-import PlayerSuccessfullyRegistered from "./PlayerSuccessfullyRegistered";
-import FullscreenPlayer from "./VideoPlayer";
+import FullscreenPlayer from "../video-player/VideoPlayer";
 
 export default function PlayerStatus() {
 
@@ -79,7 +78,7 @@ export default function PlayerStatus() {
   }
   return (
     <div>
-      < FullscreenPlayer />
+      <FullscreenPlayer playerId={player.id} />
     </div>
   
   )

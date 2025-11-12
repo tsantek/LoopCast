@@ -1,5 +1,5 @@
 import React, {useEffect, useState, useRef } from "react";
-import { registerPlayer } from "../api";
+import { registerPlayer } from "../../api";
 import QRCode from "qrcode";
 import { v4 as uuidv4 } from "uuid";
 

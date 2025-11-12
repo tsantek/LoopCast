@@ -1,8 +1,8 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Register from "./components/Register";
-import PlayerStatus from "./components/PlayerStatus";
-import Dashboard from "./components/Dashboard";
+import PlayerStatus from "./components/player-login-registration/PlayerStatus";
+import Register from "./components/player-login-registration/Register";
+import Dashboard from "./components/dashboard/Dashboard";
 
 function App() {
   return (

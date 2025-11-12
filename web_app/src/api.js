@@ -22,18 +22,20 @@ export async function confirmDevice(token) {
 }
 
 
-// Fetch schedule for video player
-export async function fetchSchedule() {
-  // const res = await fetch("http://localhost:3000/api/schedule");
-  // if (!res.ok) throw new Error("Failed to fetch schedule");
+export async function fetchPlayers() {
+  const response = await axios.get(`${API_BASE}/list`);
+  return response.data; // Array of players
+}
 
-  // demo schedule data 
-  let fake_data = [
-    { id: 2, type: "image", title: "image_1", url: "http://localhost:3001/api/video_stream/image_1.png", duration: 5 },
-    { id: 1, type: "video", title: "video_1", url: "http://localhost:3001/api/video_stream/video_1.mp4", duration: 10 },
-    { id: 3, type: "video", title: "video_2", url: "http://localhost:3001/api/video_stream/video_2.mp4", duration: 10 },
-    { id: 4, type: "image", title: "image_1", url: "http://localhost:3001/api/video_stream/image_1.png", duration: 5 },
-    
-  ];
-  return fake_data;
+export async function fetchPlayerDetails(playerId) {
+  const response = await axios.get(`${API_BASE}/${playerId}`);
+  return response.data; // { device_id, registration_token, name, status, notes }
+}
+
+
+// Fetch schedule for video player
+export async function fetchSchedule(deviceId) {
+  const response = await axios.get(`${API_BASE}/schedule/${deviceId}`);
+  console.log("Fetched schedule from API:", response.data);
+  return response.data; // Array of schedule items
 }

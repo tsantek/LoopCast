@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-import { registerPlayer } from "../api";
+import { registerPlayer } from "../../api";
 
 
 export default function Register() {
