@@ -15,11 +15,7 @@ pub struct Schedule {
     pub schedule_id: Uuid,
     pub player_id: Uuid,
     pub video_id: String,
-    pub start_time: chrono::NaiveDateTime,
-    pub end_time: chrono::NaiveDateTime,
     pub video_name: Option<String>,
-    pub duration: Option<i64>,
-    pub notes: Option<String>,
     pub media_type: Option<String>,
 }
 
@@ -39,38 +35,53 @@ pub async fn get_player_schedule(
     axum::extract::Path(player_id): axum::extract::Path<Uuid>,
 ) -> axum::response::Result<Json<Vec<Schedule>>> {
     println!("get_player_schedule called for player_id: {}", player_id);
+
+    // let result = sqlx::query_as!(
+    //     Schedule,
+    //     r#"
+    //     SELECT schedule_id, player_id, video_id, start_time, end_time, video_name, duration, notes, media_type
+    //     FROM schedules
+    //     WHERE player_id = $1
+    //     ORDER BY start_time
+    //     "#,
+    //     player_id
+    // )
+    // .fetch_all(&state.db_pool)
+    // .await;
+
     let demo_schedule = vec![
         Schedule {
             schedule_id: Uuid::new_v4(),
             player_id,
             video_id: "video_1".to_string(),
-            start_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 0, 0),
-            end_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 10, 0),
             video_name: Some("video_1.mp4".to_string()),
-            duration: None,
-            notes: Some("Morning video".to_string()),
+            // start_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 0, 0),
+            // end_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 10, 0),
+            // video_name: Some("video_1.mp4".to_string()),
+            // duration: None,
+            // notes: Some("Morning video".to_string()),
             media_type: Some("video".to_string()),
         },
         Schedule {
             schedule_id: Uuid::new_v4(),
             player_id,
             video_id: "image_1".to_string(),
-            start_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 10, 0),
-            end_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 15, 0),
+            // start_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 10, 0),
+            // end_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 15, 0),
             video_name: Some("image_1.png".to_string()),
-            duration: None,
-            notes: Some("Morning image".to_string()),
+            // duration: None,
+            // notes: Some("Morning image".to_string()),
             media_type: Some("image".to_string()),
         },
         Schedule {
             schedule_id: Uuid::new_v4(),
             player_id,
             video_id: "video_2".to_string(),
-            start_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 15, 0),
-            end_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 25, 0),
+            // start_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 15, 0),
+            // end_time: chrono::NaiveDate::from_ymd(2024, 1, 1).and_hms(9, 25, 0),
             video_name: Some("video_2.mp4".to_string()),
-            duration: None,
-            notes: Some("Mid-morning video".to_string()),
+            // duration: None,
+            // notes: Some("Mid-morning video".to_string()),
             media_type: Some("video".to_string()),
         },
     ];

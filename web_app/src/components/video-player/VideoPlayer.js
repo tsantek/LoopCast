@@ -21,6 +21,7 @@ export default function FullscreenPlayer({ playerId }) {
           ...item,
           url: `http://localhost:3001/api/video_stream/${item.video_name}`,
         }));
+        console.log("Mapped schedule data:", mappedData);
         setSchedule(mappedData);
       } catch (err) {
         console.warn("Failed to fetch schedule.", err);
@@ -98,6 +99,7 @@ export default function FullscreenPlayer({ playerId }) {
   };
 
   if (!current) return <div style={{ color: "white" }}>Loading schedule...</div>;
+
 
   return (
     <div
@@ -177,7 +179,6 @@ export default function FullscreenPlayer({ playerId }) {
         />
       )}
 
-      {/* Debug info (you can remove this) */}
       <div
         style={{
           position: "absolute",

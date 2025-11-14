@@ -11,6 +11,7 @@ mod app_state;
 mod db;
 mod routes;
 
+use crate::routes::ad::upload_ad;
 use crate::routes::player::{
     confirm_registration, get_player, get_players, login_player, register_player,
 };
@@ -18,6 +19,7 @@ use crate::routes::schedule::get_player_schedule;
 use crate::routes::video_stream::video_stream;
 use http::Method;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::limit::RequestBodyLimitLayer;
 
 #[tokio::main]
 async fn main() {
@@ -46,6 +48,8 @@ async fn main() {
         .route("/api/player/:device_id", get(get_player))
         .route("/api/player/schedule/:player_id", get(get_player_schedule))
         .route("/api/video_stream/:video_name", get(video_stream))
+        .route("/api/ad/upload", post(upload_ad))
+        .layer(RequestBodyLimitLayer::new(25 * 1024 * 1024)) // 25 MB
         .with_state(state)
         .layer(cors);
 

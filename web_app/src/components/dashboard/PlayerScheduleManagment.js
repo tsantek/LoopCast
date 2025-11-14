@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchSchedule } from '../../api';
+import MinuteCalendar from '../dashboard/Calendar';
 
 export default function ScheduleManagement({ playerId }) {
     const [loadin, setLoading] = useState(true);

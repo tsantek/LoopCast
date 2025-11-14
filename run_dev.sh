@@ -6,7 +6,8 @@ cd "$(dirname "$0")"
 # Start the Rust server
 echo "🚀 Starting Rust backend..."
 cd server
-cargo watch -x run &
+# cargo watch -x run &
+cargo watch -i "uploads/*" -x run &
 SERVER_PID=$!
 
 # Start the web frontend

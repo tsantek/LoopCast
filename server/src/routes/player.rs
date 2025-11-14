@@ -36,7 +36,7 @@ pub async fn register_player(
     // Generate a registration token that will be 6 characters long
 
     sqlx::query!(
-        "INSERT INTO players (device_id, registration_token) VALUES ($1, $2)",
+        "INSERT INTO players (id, registration_token) VALUES ($1, $2)",
         player_id,
         registration_token,
     )
@@ -86,7 +86,7 @@ pub async fn confirm_registration(
 
     println!("confirm_registration called");
     let player = sqlx::query!(
-        "SELECT device_id, status::text AS status FROM players WHERE registration_token = $1",
+        "SELECT id, status::text AS status FROM players WHERE registration_token = $1",
         registration_token
     )
     .fetch_optional(&state.db)
@@ -125,7 +125,7 @@ pub async fn confirm_registration(
     .expect("Failed to update player");
 
     Ok(Json(Player {
-        id: player_record.device_id,
+        id: player_record.id,
         registration_token: Some(registration_token),
         name: Some(payload.name),
         status: Some("active".to_string()),
@@ -153,7 +153,7 @@ pub async fn login_player(
     let registration_token = payload.registration_token;
 
     let player = sqlx::query!(
-        "SELECT device_id, status::text AS status FROM players WHERE registration_token = $1 AND name = $2",
+        "SELECT id, status::text AS status FROM players WHERE registration_token = $1 AND name = $2",
         registration_token,
         name
     )
@@ -170,7 +170,7 @@ pub async fn login_player(
     };
 
     Ok(Json(Player {
-        id: player_record.device_id,
+        id: player_record.id,
         registration_token: Some(registration_token),
         name: Some(name),
         status: Some(player_record.status.unwrap_or_default()),
@@ -186,11 +186,11 @@ pub async fn login_player(
 #[axum::debug_handler]
 pub async fn get_player(
     State(state): State<Arc<AppState>>,
-    Path(device_id): Path<Uuid>,
+    Path(player_id): Path<Uuid>,
 ) -> axum::response::Result<Json<Player>, axum::http::StatusCode> {
     let player = sqlx::query!(
-        "SELECT device_id, name, notes, address, city, zip_code, country, state, status::text AS status FROM players WHERE device_id = $1",
-        device_id
+        "SELECT id, name, notes, address, city, zip_code, country, state, status::text AS status FROM players WHERE id = $1",
+        player_id
     )
     .fetch_optional(&state.db)
     .await
@@ -198,7 +198,7 @@ pub async fn get_player(
 
     match player {
         Some(p) => Ok(Json(Player {
-            id: p.device_id,
+            id: p.id,
             registration_token: None,
             name: p.name,
             status: p.status,
@@ -219,7 +219,7 @@ pub async fn get_players(
     State(state): State<Arc<AppState>>,
 ) -> axum::response::Result<Json<Vec<Player>>, axum::http::StatusCode> {
     let players = sqlx::query!(
-        "SELECT device_id, registration_token, name, notes, address, status::text AS status FROM players"
+        "SELECT id, registration_token, name, notes, address, status::text AS status FROM players"
     )
     .fetch_all(&state.db)
     .await
@@ -229,7 +229,7 @@ pub async fn get_players(
         players
             .into_iter()
             .map(|p| Player {
-                id: p.device_id,
+                id: p.id,
                 registration_token: Some(p.registration_token),
                 name: p.name,
                 status: p.status,

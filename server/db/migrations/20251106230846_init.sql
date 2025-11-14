@@ -8,14 +8,14 @@
 CREATE TABLE ads (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
-    url TEXT NOT NULL,
+    file_name TEXT NOT NULL,
     duration INTEGER NOT NULL,
     ad_type TEXT NOT NULL
 );
 
 -- Players table
 CREATE TABLE players (
-    device_id UUID PRIMARY KEY NOT NULL,
+    id UUID PRIMARY KEY NOT NULL,
     name TEXT,
     address TEXT,
     zip_code TEXT,
@@ -33,7 +33,7 @@ CREATE TABLE players (
 CREATE TABLE ad_schedules (
     id UUID PRIMARY KEY,
     ad_id UUID NOT NULL REFERENCES ads(id),
-    device_id UUID NOT NULL REFERENCES players(device_id),
+    player_id UUID NOT NULL REFERENCES players(id),
     start_time TIME,
     end_time TIME,
     is_filler BOOLEAN DEFAULT FALSE,

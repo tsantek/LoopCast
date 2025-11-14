@@ -31,7 +31,7 @@ SET default_table_access_method = heap;
 CREATE TABLE public.ad_schedules (
     id uuid NOT NULL,
     ad_id uuid NOT NULL,
-    device_id uuid NOT NULL,
+    player_id uuid NOT NULL,
     start_time time without time zone,
     end_time time without time zone,
     is_filler boolean DEFAULT false,
@@ -46,7 +46,7 @@ CREATE TABLE public.ad_schedules (
 CREATE TABLE public.ads (
     id uuid NOT NULL,
     name text NOT NULL,
-    url text NOT NULL,
+    file_name text NOT NULL,
     duration integer NOT NULL,
     ad_type text NOT NULL
 );
@@ -57,7 +57,7 @@ CREATE TABLE public.ads (
 --
 
 CREATE TABLE public.players (
-    device_id uuid NOT NULL,
+    id uuid NOT NULL,
     name text,
     address text,
     zip_code text,
@@ -101,7 +101,7 @@ ALTER TABLE ONLY public.ads
 --
 
 ALTER TABLE ONLY public.players
-    ADD CONSTRAINT players_pkey PRIMARY KEY (device_id);
+    ADD CONSTRAINT players_pkey PRIMARY KEY (id);
 
 
 --
@@ -121,11 +121,11 @@ ALTER TABLE ONLY public.ad_schedules
 
 
 --
--- Name: ad_schedules ad_schedules_device_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ad_schedules ad_schedules_player_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ad_schedules
-    ADD CONSTRAINT ad_schedules_device_id_fkey FOREIGN KEY (device_id) REFERENCES public.players(device_id);
+    ADD CONSTRAINT ad_schedules_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.players(id);
 
 
 --

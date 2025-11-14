@@ -4,6 +4,10 @@ import PlayerDetails from "./PlayerDetails";
 import { fetchPlayers } from "../../api";
 import ScheduleManagement from "./PlayerScheduleManagment";
 import PlayerAnalytics from "./PlayerAnalytics";
+import MinuteCalendar from "./Calendar";
+import { Nav } from "react-bootstrap";
+import AdsManagement from "./Ads";
+
 
 export default function Dashboard() {
 
@@ -80,6 +84,7 @@ export default function Dashboard() {
                     ) : (
                         <p>Please select a player to manage its schedule.</p>
                     )}
+                    <MinuteCalendar />
                 </Tab>
                 <Tab eventKey="analytics" title="Analytics">
                     <h3>Analytics</h3>
@@ -88,6 +93,10 @@ export default function Dashboard() {
                     ) : (
                         <p>Please select a player to view analytics.</p>
                     )}
+                </Tab>
+                <Tab eventKey="ads_management" title="Ads Management">
+                    <h3>Ads Management</h3>
+                    <AdsManagement />
                 </Tab>
             </Tabs>
         </div>
