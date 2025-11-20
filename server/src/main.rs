@@ -1,31 +1,29 @@
-use std::sync::Arc;
-
-use axum::http;
-use axum::routing::post;
-use axum::{Router, routing::get};
-use tokio::net::TcpListener;
-
-use crate::app_state::AppState;
-
 mod app_state;
 mod db;
+mod handlers;
+mod models;
 mod routes;
 
-use crate::routes::ad::upload_ad;
-use crate::routes::player::{
-    confirm_registration, get_player, get_players, login_player, register_player,
-};
-use crate::routes::schedule::get_player_schedule;
-use crate::routes::video_stream::video_stream;
+use crate::app_state::AppState;
+use axum::http;
+use axum::{Router, routing::get};
 use http::Method;
+use std::sync::Arc;
+use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 
 #[tokio::main]
 async fn main() {
     let cors = CorsLayer::new()
-        .allow_origin(Any) // Allow any origin (for dev only)
-        .allow_methods(vec![Method::GET, Method::POST, Method::OPTIONS])
+        .allow_origin(Any)
+        .allow_methods(vec![
+            Method::GET,
+            Method::POST,
+            Method::OPTIONS,
+            Method::DELETE,
+            Method::PUT,
+        ])
         .allow_headers(Any);
 
     // Connect to PostgreSQL
@@ -35,20 +33,13 @@ async fn main() {
     // Build our application with a single route
     let app = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .route(
-            "/api/player/register/:registration_token",
-            post(register_player),
+        .nest(
+            "/api/video_stream",
+            routes::video_stream::video_stream_routes(),
         )
-        .route(
-            "/api/player/confirm-registration/:registration_token",
-            post(confirm_registration),
-        )
-        .route("/api/player/login", post(login_player))
-        .route("/api/player/list", get(get_players))
-        .route("/api/player/:device_id", get(get_player))
-        .route("/api/player/schedule/:player_id", get(get_player_schedule))
-        .route("/api/video_stream/:video_name", get(video_stream))
-        .route("/api/ad/upload", post(upload_ad))
+        .nest("/api/player", routes::player::player_routes())
+        .nest("/api/ad", routes::ad::ad_routes())
+        .nest("/api/schedule", routes::schedule::schedule_routes())
         .layer(RequestBodyLimitLayer::new(25 * 1024 * 1024)) // 25 MB
         .with_state(state)
         .layer(cors);

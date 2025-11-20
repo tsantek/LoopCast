@@ -11,7 +11,7 @@ export default function FullscreenPlayer({ playerId }) {
 
   const current = schedule[index];
 
-  // 1️⃣ Load schedule (fake or from API)
+  
   useEffect(() => {
     async function loadSchedule() {
       try {
@@ -19,7 +19,7 @@ export default function FullscreenPlayer({ playerId }) {
         console.log("Fetched schedule from API:", data);
         const mappedData = data.map((item) => ({
           ...item,
-          url: `http://localhost:3001/api/video_stream/${item.video_name}`,
+          url: `http://localhost:3001/api/video_stream/${item.file_name}`,
         }));
         console.log("Mapped schedule data:", mappedData);
         setSchedule(mappedData);
@@ -30,7 +30,6 @@ export default function FullscreenPlayer({ playerId }) {
     loadSchedule();
   }, [playerId]);
 
-  // 2️⃣ Once schedule and refs exist, load first video
   useEffect(() => {
     if (!schedule.length) return;
     const first = schedule[0];
@@ -45,7 +44,7 @@ export default function FullscreenPlayer({ playerId }) {
     }
   }, [schedule]); // run when schedule updates
 
-  // 3️⃣ Auto-advance for images (optional)
+
   useEffect(() => {
     if (!current || current.media_type !== "image") return;
     const timer = setTimeout(() => nextItem(), (current.duration || 10) * 1000);
@@ -167,7 +166,6 @@ export default function FullscreenPlayer({ playerId }) {
       {current.media_type === "image" && !showBlack && (
         <img
           src={current.url}
-          alt={current.video_name}
           style={{
             width: "100%",
             height: "100%",
@@ -188,8 +186,7 @@ export default function FullscreenPlayer({ playerId }) {
           fontSize: 12,
         }}
       >
-        {current.video_name || "(no name)"} | {current.media_type}
-      </div>
+        </div>
     </div>
   );
 }

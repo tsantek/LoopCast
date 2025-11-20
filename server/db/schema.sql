@@ -35,7 +35,9 @@ CREATE TABLE public.ad_schedules (
     start_time time without time zone,
     end_time time without time zone,
     is_filler boolean DEFAULT false,
-    ad_order integer DEFAULT 0
+    ad_order integer DEFAULT 0,
+    status public.status_type DEFAULT 'active'::public.status_type,
+    repeat_interval interval DEFAULT '00:00:00'::interval
 );
 
 

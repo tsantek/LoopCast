@@ -37,7 +37,9 @@ CREATE TABLE ad_schedules (
     start_time TIME,
     end_time TIME,
     is_filler BOOLEAN DEFAULT FALSE,
-    ad_order INTEGER DEFAULT 0
+    ad_order INTEGER DEFAULT 0,
+    status status_type DEFAULT status_type('active'),
+    repeat_interval INTERVAL DEFAULT INTERVAL '0 seconds'
 );
 
 
