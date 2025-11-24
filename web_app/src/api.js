@@ -49,6 +49,11 @@ export async function fetchAds() {
   return response.data; // Array of ads
 }
 
+// Upload a new ad
+export async function uploadAd(formData) {
+  const response = await axios.post(`${API_BASE_AD}/upload`, formData);
+  return response; // Uploaded ad info
+}
 
  // Create a new schedule entry
 export async function createScheduleEntry(payload) {
@@ -61,4 +66,10 @@ export async function createScheduleEntry(payload) {
 export async function updateScheduleEntry(scheduleId, payload) {
   const response = await axios.put(`${API_BASE_SCHEDULE}/update/${scheduleId}`, payload);
   return response.data; // Updated schedule entry
+}
+
+// Delete a schedule entry
+export async function deleteScheduleEntry(scheduleId) {
+  const response = await axios.delete(`${API_BASE_SCHEDULE}/delete/${scheduleId}`);
+  return response.data; // { message: "deleted" }
 }

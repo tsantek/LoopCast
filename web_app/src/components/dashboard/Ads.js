@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Button, Form, Modal, ProgressBar, Stack, Table } from "react-bootstrap";
+import { uploadAd } from "../../api";
 
 const AdsManagement = () => {
   const [showModal, setShowModal] = useState(false);
@@ -35,12 +36,9 @@ const AdsManagement = () => {
       formData.append("total_chunks", totalChunks.toString());
       formData.append("chunk_data", chunk, file.name);
 
-      const res = await fetch("http://localhost:3001/api/ad/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await uploadAd(formData);
 
-      if (!res.ok) {
+      if (!res.status || res.status !== 200) {
         setAlertMessage("Upload failed at chunk " + chunkNumber);
         return;
       }
