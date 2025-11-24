@@ -1,121 +1,255 @@
-# LoopCast (IPTV-Style Ad Playback System)
+# LoopCast (IPTV-Style Ad Playback & Scheduling System)
 
-**LoopCast** is a full-featured IPTV-style ad playback system, designed to schedule and play video and image ads across multiple devices, with support for filler content, QR-based device registration, and time-based scheduling.
+**LoopCast** is an IPTV-style advertisement playback ecosystem with device registration (via QR), schedule-based ad delivery, filler ads, dashboards, and multiple player clients (Web, Roku, etc.).  
+This README documents the current API structure, frontend usage, and system behavior.
 
 ---
 
 ## Table of Contents
 - [System Overview](#system-overview)
+- [Architecture](#architecture)
 - [Database Structure](#database-structure)
 - [API Endpoints](#api-endpoints)
+- [Frontend API Functions](#frontend-api-functions)
 - [Playback Logic](#playback-logic)
+- [Registration Flow](#registration-flow)
 - [Example Workflow](#example-workflow)
-- [Web Player Sample Logic](#web-player-sample-logic)
-- [Roadmap / Next Steps](#roadmap--next-steps)
+- [Roadmap](#roadmap)
 - [Summary](#summary)
 
 ---
 
 ## System Overview
 
-- **Goal:** Build a full IPTV-style ad playback ecosystem with smart scheduling, filler content, and device registration.
-- **Core Components:**
-  - 🖥 **Dashboard (Web UI):** Upload/manage ads, create schedules, assign devices.
-  - ⚙️ **Rust Backend (Axum + SQLx):** Manages ads, devices, schedules, QR registration, and playback API.
-  - 📺 **Players (Web & Roku):** Fetch playlists and play ads (video or images) according to schedule.
+LoopCast includes:
+
+### 🖥 Dashboard (React)
+- Manage ads  
+- Manage devices  
+- Confirm device registrations  
+- Create/edit/delete schedules  
+
+### ⚙️ Backend (Rust, Axum)
+- Ad management  
+- Device registration  
+- Schedule logic  
+- Player playlist generation  
+
+### 📺 Player Clients
+- Browser-based player (React)  
+- Roku player (SceneGraph) in v2   
+
+---
+
+## Architecture
+
+Player Device ←→ Backend (Axum) ←→ Dashboard (React)
+
+
+The backend exposes three main API groups:
+
+- `/api/player` – device registration, confirmation, status, playlist logic  
+- `/api/schedule` – all schedule CRUD operations  
+- `/api/ad` – ad listing  
 
 ---
 
 ## Database Structure
 
-**`ads`**  
-- `id`, `name`, `url`, `duration`  
-- `ad_type` (`video` or `image`)
+### Enum Types
+#### `status_type`
+Represents the lifecycle state of a player or schedule:
 
-**`devices`**  
-- `id`, `name`, `tags`  
-- `registered_at` (timestamp)  
-- Each device has a **unique UUID** and can be linked via **QR code scan**  
+- `pending`
+- `active`
+- `inactive`
 
-**`ad_schedules`**  
-- `id`, `ad_id`, `device_id`  
-- `start_time`, `end_time` (time window for scheduled ads)  
-- `is_filler` (0 = scheduled, 1 = filler)  
-- `ad_order`  
+---
+
+### Tables
+
+#### **ads**
+Stores all uploaded ads (videos or images).
+
+| Column      | Type      | Details |
+|-------------|-----------|---------|
+| `id`        | UUID (PK) | Unique ad identifier |
+| `name`      | TEXT      | Display name of the ad |
+| `file_name` | TEXT      | File name stored on server |
+| `duration`  | INTEGER   | Duration in seconds (used for images) |
+| `ad_type`   | TEXT      | `video` or `image` |
+
+---
+
+#### **players**
+Represents playback devices registered via QR code.
+
+| Column               | Type            | Details |
+|----------------------|-----------------|---------|
+| `id`                 | UUID (PK)       | Device identifier |
+| `name`               | TEXT            | Optional device name |
+| `address`            | TEXT            | Optional address |
+| `zip_code`           | TEXT            | Optional address |
+| `city`               | TEXT            | Optional address |
+| `state`              | TEXT            | Optional address |
+| `country`            | TEXT            | Optional address |
+| `notes`              | TEXT            | Admin notes for the device |
+| `registration_token` | TEXT            | Token used for QR onboarding |
+| `status`             | status_type     | Default `pending` |
+| `registered_at`      | TIMESTAMPTZ     | Auto-set on insert |
+
+**Notes:**
+- Devices start as **pending** and are activated when the dashboard confirms them.
+- `registration_token` links the player device to the backend.
+
+---
+
+#### **ad_schedules**
+Defines which ads play on which players and when.
+
+| Column           | Type            | Details |
+|------------------|-----------------|---------|
+| `id`             | UUID (PK)       | Schedule entry ID |
+| `ad_id`          | UUID (FK)       | References `ads(id)` |
+| `player_id`      | UUID (FK)       | References `players(id)` |
+| `start_time`     | TIMESTAMP       | When the ad becomes active |
+| `end_time`       | TIMESTAMP       | When the ad expires |
+| `is_filler`      | BOOLEAN         | If true → played when no schedules match |
+| `ad_order`       | INTEGER         | Order within the playlist |
+| `status`         | status_type     | Default `active` |
+| `repeat_interval`| INTERVAL        | Optional repeating schedule |
+
+**Behavior:**
+- Scheduled ads play when current time is between `start_time` and `end_time`.
+- If no scheduled ads match, the system falls back to ads where `is_filler = true`.
+
 
 ---
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check (returns `"OK"`) |
-| `/player/register` | GET | Register a new player and generate a registration token + QR code |
-| `/player/confirm-registration/:registration_token` | POST | Confirm player registration with registration token and payload (name, address, etc.) |
-| `/api/ads` | POST | Upload an ad (video/image) |
-| `/api/ads` | GET | List all ads |
-| `/api/devices` | POST | Register a new playback device |
-| `/api/devices/:id/qrcode` | GET | Generate QR code for device registration |
-| `/api/ad_schedules` | POST | Assign ads to devices with time windows or filler role |
-| `/api/player/:device_id` | GET | Fetch playlist for a device (scheduled + fallback filler ads) |
-| `/api/player/report` | POST | Track ad impressions (analytics) |
+### **Player / Device**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/player/register/:token` | Register a device and return QR SVG |
+| `GET` | `/api/player/info/:deviceName` | Check device status & registration state |
+| `POST` | `/api/player/confirm-registration/:token` | Dashboard confirms registration |
+| `GET` | `/api/player/list` | List all players |
+| `GET` | `/api/player/:id` | Get player details |
 
 ---
+
+### **Schedule**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/schedule/:deviceId` | Fetch full playlist for a device |
+| `POST` | `/api/schedule/create` | Create schedule entry |
+| `PUT` | `/api/schedule/update/:id` | Update schedule entry |
+| `DELETE` | `/api/schedule/delete/:id` | Delete schedule entry |
+
+---
+
+### **Ads**
+| Method | Endpoint           | Description        |
+|--------|---------------------|--------------------|
+| `GET`  | `/api/ad/all`      | Retrieve all ads   |
+| `POST` | `/api/ad/upload`   | Upload a new ad    |
+
+The upload endpoint supports both single-file and chunked uploads. Chunked uploads are stored temporarily and automatically assembled, after which metadata is extracted and the ad is saved.
+
+---
+
+## Frontend API Functions
+
+These match the current React code:
+
+```js
+// Device registration
+registerPlayer(token)
+getPlayerStatus(deviceName)
+confirmDevice(token)
+
+// Player management
+fetchPlayers()
+fetchPlayerDetails(playerId)
+
+// Schedules
+fetchSchedule(deviceId)
+createScheduleEntry(payload)
+updateScheduleEntry(scheduleId, payload)
+deleteScheduleEntry(scheduleId)
+
+// Ads
+fetchAds()
+uploadAdFile(file)
+```
 
 ## Playback Logic
 
-1. **Device Startup**
-   - Device has a **unique ID**  
-   - Admin scans QR code to link device to dashboard
+1. **Player starts**  
+   The device requests the playlist from:
 
-2. **Backend (`/api/player/:device_id`)**
-   - Checks current UTC time (`HH:MM`)  
-   - Fetches **scheduled ads** for this time window (`is_filler = 0`)  
-   - If none → returns **filler ads** (`is_filler = 1`)  
-   - Supports both **video** and **image** ads
+    `GET /api/schedule/:deviceId`
+    
 
-3. **Player**
-   - Loops playlist sequentially  
-   - `video` → `<video>` element (or Roku Video node)  
-   - `image` → display for `duration` seconds  
-   - Refetch playlist every `refresh_after` seconds (e.g., 300–600 s)
+2. **Backend determines the correct ads**  
+- Gets current UTC time  
+- Retrieves scheduled ads where the time window matches  
+- If no schedule matches → returns **filler ads** (`is_filler = true`)  
+
+3. **Player loops ads**  
+- Videos are played using `<video>`  
+- Images are shown for their `duration` value  
+- After finishing the list, it loops again  
+- The player periodically refreshes the playlist (every 5–10 minutes)
+
+4. **If the device is not registered**  
+- The player shows a QR code from the `/register/:token` endpoint  
+- Admin scans the QR using the dashboard  
+- Dashboard completes the process using:
+
+  ```
+  POST /api/player/confirm-registration/:token
+  ```
 
 ---
 
-## Example Workflow
+## Registration Flow
+### **Player Status & Registration**
 
-| Time | Playlist Returned |
-|------|------------------|
-| 08:00–10:00 | 10 scheduled video/image ads |
-| Other times | Filler ads (looped image or video content) |
+- The player component checks `localStorage` every 10 seconds for stored player data.
+- If no active player is found, it shows the **registration** form (`PlayerRegistration`) and a **login** option (`PlayerLogin`).
+- Once a player is confirmed as `active`, the component stops polling and renders the full-screen player (`FullscreenPlayer`).
+- Users can restart registration by clearing stored data and reloading the page.
+
+
+## Roadmap
+
+### Backend Improvements
+- Impression tracking (`/api/player/report`)  
+- JWT authentication for dashboard login
+- Device heartbeat (online/offline tracking)
+- Tag-based schedule routing (group devices)  
+
+### Dashboard Enhancements
+- Calendar / timeline scheduling UI 
+- Drag-and-drop ad ordering  
+- Bulk device assignment   
+
+### Player Upgrades
+- Offline caching of filler ads 
+- Auto-update player bundle  
+- Improved network fallback behavior  
+- Support for additional codecs (H.265, VP9)  
 
 ---
 
-## Roadmap / Next Steps
+## Summary
 
-### Backend
-- [ ] Add `ad_type` column (`video`, `image`, `html`)  
-- [ ] QR code generator (`GET /api/devices/:id/qrcode`) using `qrcode` crate  
-- [ ] `/api/player/report` endpoint for impression tracking  
-- [ ] JWT-based authentication for dashboard API  
+LoopCast delivers:
 
-### Dashboard (React/TypeScript)
-- [ ] Device list view with QR code scan registration  
-- [ ] Schedule builder UI (drag & drop ads into time slots)  
-- [ ] Upload form with auto-detect for video/image type  
-- [ ] Calendar/timeline view for ad schedules  
-
-### Player (Web & Roku)
-- [ ] Web player: HTML5 `<video>` + `<img>` support  
-- [ ] Roku app: SceneGraph nodes for video/images  
-- [ ] Auto-refresh playlist every 5–10 minutes  
-- [ ] Display “Device not assigned” QR screen until linked  
-
-### Future Expansion
-- [ ] Campaign grouping (multiple devices share schedule)  
-- [ ] Priority weights / frequency control  
-- [ ] Geo-targeting per device  
-- [ ] Offline caching for unreliable connections  
-- [ ] Real-time dashboard showing which ad is currently playing  
-
-
+- QR-based device onboarding  
+- Playlist logic with scheduled + filler ads  
+- Multi-device management  
+- Web dashboard for admins  
+- Player applications for Web and Roku (to come) 
