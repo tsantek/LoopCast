@@ -1,0 +1,21 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = { version = "0.7.0", features = ["macros", "multipart"] }
+axum-extra = "0.10.0"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1", features = ["serde", "v4"] }
+sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio-native-tls", "macros", "uuid"] }
+chrono = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+base64 = "0.22.1"
+tower-http = { version = "0.6.6", features = ["cors", "limit"] }
+tokio-util = { version = "0.7.17", features = ["io"] }
+multipart = "0.18"
+hyper = { version = "1.8.1", features = ["full"] }
+futures-util = "0.3.31"

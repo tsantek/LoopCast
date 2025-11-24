@@ -1,0 +1,16 @@
+# Rust-specific
+target/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE specific files
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+.env
+src/ads/
+/uploads/
